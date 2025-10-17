@@ -17,22 +17,29 @@
           </tr>
         </thead>
         <tbody>
-        <?php foreach ($logs as $l): ?>
-          <tr>
-            <td><?= (int)$l['LOG_ID'] ?></td>
-            <td><?= htmlspecialchars($l['STARTED_AT']) ?></td>
-            <td><?= htmlspecialchars($l['FINISHED_AT']) ?></td>
-            <td>
-              <?php
-                $status = strtoupper($l['STATUS'] ?? '');
-                $cls = ($status==='SUCCESS')?'success':(($status==='FAILED')?'danger':(($status==='WARNING')?'warning':'secondary'));
-              ?>
-              <span class="badge bg-<?= $cls ?>"><?= htmlspecialchars($status) ?></span>
-            </td>
-            <td><code style="white-space:pre-wrap"><?= htmlspecialchars($l['MESSAGE']) ?></code></td>
-            <td><?= htmlspecialchars($l['CREATED_AT']) ?></td>
-          </tr>
-        <?php endforeach; if (empty($logs)): ?>
+        <?php if (!empty($logs)): ?>
+          <?php foreach ($logs as $l): ?>
+            <tr>
+              <td><?= (int)($l['LOG_ID'] ?? 0) ?></td>
+              <td><?= htmlspecialchars($l['STARTED_AT'] ?? '') ?></td>
+              <td><?= htmlspecialchars($l['FINISHED_AT'] ?? '') ?></td>
+              <td>
+                <?php
+                  $status = strtoupper($l['STATUS'] ?? '');
+                  $cls = match($status) {
+                    'SUCCESS' => 'success',
+                    'FAILED'  => 'danger',
+                    'WARNING' => 'warning',
+                    default   => 'secondary'
+                  };
+                ?>
+                <span class="badge bg-<?= $cls ?>"><?= htmlspecialchars($status) ?></span>
+              </td>
+              <td><code style="white-space:pre-wrap"><?= htmlspecialchars($l['MESSAGE'] ?? '') ?></code></td>
+              <td><?= htmlspecialchars($l['CREATED_AT'] ?? '') ?></td>
+            </tr>
+          <?php endforeach; ?>
+        <?php else: ?>
           <tr><td colspan="6" class="text-center text-muted p-4">Sin registros.</td></tr>
         <?php endif; ?>
         </tbody>

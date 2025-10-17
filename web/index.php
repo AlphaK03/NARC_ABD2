@@ -1,6 +1,51 @@
 <?php
+session_start();
 require __DIR__ . '/dao.php';
 require __DIR__ . '/views/layout.php';
+
+// ==== LOGIN SIMPLE ====
+if (isset($_GET['login'])) {
+  if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $_SESSION['db_user'] = trim($_POST['user']);
+    $_SESSION['db_pass'] = trim($_POST['pass']);
+    $_SESSION['db_conn'] = trim($_POST['conn']); // Ejemplo: localhost/CRANPDB
+    header("Location: index.php");
+    exit;
+  }
+  ?>
+  <div class="container mt-5" style="max-width:400px;">
+    <h4 class="mb-3 text-center">Conectar a Oracle</h4>
+    <form method="post">
+      <div class="mb-3">
+        <label class="form-label">Usuario</label>
+        <input name="user" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Contraseña</label>
+        <input type="password" name="pass" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Conexión (host/SID o servicio)</label>
+        <input name="conn" class="form-control" placeholder="localhost/CRANPDB" required>
+      </div>
+      <button class="btn btn-primary w-100">Ingresar</button>
+    </form>
+  </div>
+  <?php
+  exit;
+}
+
+if (isset($_GET['logout'])) {
+  close_db();        
+  session_destroy(); 
+  header("Location: ?login=1");
+  exit;
+}
+
+
+// ====================
+// LÓGICA PRINCIPAL APP
+// ====================
 
 $action = $_GET['action'] ?? 'list';
 

@@ -105,7 +105,7 @@ CREATE OR REPLACE PACKAGE BODY bk_pkg AS
     p_byminute VARCHAR2,
     p_start   TIMESTAMP
   ) RETURN VARCHAR2 IS
-    v RICHAR(4000);
+    v VARCHAR2(4000);
     v_main VARCHAR2(4000);
     v_by   VARCHAR2(4000);
   BEGIN
@@ -354,15 +354,20 @@ CREATE OR REPLACE PACKAGE BODY bk_pkg AS
 
     -- 4) Crear job de tipo EXECUTABLE que invoque RMAN con el command file
     --    Advertencia: requiere configuración de external jobs en el SO.
-    DBMS_SCHEDULER.CREATE_JOB (
-      job_name         => v_job_name,
-      job_type         => 'EXECUTABLE',
-      job_action       => c_rman_bin,
-      number_of_arguments => 3,
-      start_date       => v_start,
-      repeat_interval  => v_repeat,
-      comments         => 'Backup strategy '||p_strategy_id
-    );
+    -- 4) Crear job de tipo EXECUTABLE que invoque RMAN con el command file
+--    Advertencia: requiere privilegio CREATE EXTERNAL JOB y servicio del Scheduler activo
+DBMS_SCHEDULER.CREATE_JOB (
+  job_name        => v_job_name,
+  job_type        => 'PLSQL_BLOCK', 
+  job_action      => 'BEGIN NULL; END;',  -- Simulación segura sin usar rman.exe
+  start_date      => v_start,
+  repeat_interval => v_repeat,
+  enabled         => TRUE,                -- Activa el job automáticamente
+  auto_drop       => FALSE,               -- No se borra tras ejecutarse
+  comments        => 'Simulación de backup para estrategia ' || p_strategy_id
+);
+
+
 
     -- args típicos: 'target', 'nocatalog', '@/ruta/strat_X.rman'
     DBMS_SCHEDULER.SET_JOB_ARGUMENT_VALUE(v_job_name, 1, 'target /');
@@ -427,21 +432,24 @@ CREATE OR REPLACE PACKAGE BODY bk_pkg AS
     rc SYS_REFCURSOR;
   BEGIN
     OPEN rc FOR
-      SELECT tablespace_name FROM dba_tablespaces ORDER BY tablespace_name;
+      SELECT tablespace_name FROM user_tablespaces ORDER BY tablespace_name;
     RETURN rc;
   END;
 
-  FUNCTION list_datafiles RETURN SYS_REFCURSOR IS
+    FUNCTION list_datafiles RETURN SYS_REFCURSOR IS
     rc SYS_REFCURSOR;
   BEGIN
     OPEN rc FOR
-      SELECT file_name AS datafile_path,
-             tablespace_name,
-             ROUND(bytes/1024/1024) AS size_mb
-        FROM dba_data_files
-       ORDER BY tablespace_name, file_name;
+      SELECT df.name AS datafile_path,
+             ts.name AS tablespace_name,
+             ROUND(df.bytes/1024/1024) AS size_mb
+        FROM v$datafile df
+        JOIN v$tablespace ts ON df.ts# = ts.ts#
+       ORDER BY ts.name, df.name;
     RETURN rc;
   END;
+
+
 
 END bk_pkg;
 /

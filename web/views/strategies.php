@@ -55,15 +55,18 @@
         <div class="row g-3">
           <div class="col-md-6">
             <label class="form-label">Cliente</label>
-            <input class="form-control" name="client_name" required>
+<input class="form-control" name="client_name" 
+       value="<?= htmlspecialchars($_SESSION['db_user'] ?? '') ?>" readonly>
           </div>
           <div class="col-md-6">
             <label class="form-label">DB Alias</label>
-            <input class="form-control" name="db_alias" required>
-          </div>
+<input class="form-control" name="db_alias" 
+       value="<?= htmlspecialchars($_SESSION['db_conn'] ?? '') ?>" readonly>          </div>
           <div class="col-md-8">
             <label class="form-label">Nombre estrategia (name_code)</label>
-            <input class="form-control" name="name_code" placeholder="rmadb0101.rma" required>
+<input class="form-control" name="name_code"
+       value="<?= htmlspecialchars(getNextStrategyName()) ?>"
+       readonly>
           </div>
           <div class="col-md-4">
             <label class="form-label">Tipo de respaldo</label>
@@ -132,44 +135,80 @@
           </div>
 
           <!-- Calendarización -->
-          <div class="col-12">
-            <div class="border rounded p-2">
-              <strong>Calendarización</strong>
-              <div class="row mt-2 g-2">
-                <div class="col-md-4">
-                  <label class="form-label">Frecuencia</label>
-                  <select class="form-select" name="freq">
-                    <option value="DAILY">DAILY</option>
-                    <option value="WEEKLY">WEEKLY</option>
-                    <option value="MONTHLY">MONTHLY</option>
-                    <option value="ONCE">ONCE</option>
-                  </select>
-                </div>
-                <div class="col-md-8">
-                  <label class="form-label">Inicio</label>
-                  <input class="form-control" type="datetime-local" name="start_time" required>
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">BYDAY (WEEKLY)</label>
-                  <input class="form-control" name="byday" placeholder="MON,TUE,WED">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">BYHOUR</label>
-                  <input class="form-control" name="byhour" placeholder="2 o 2,14">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">BYMINUTE</label>
-                  <input class="form-control" name="byminute" placeholder="0 o 0,30">
-                </div>
-                <div class="col-12">
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="enabled" id="enabled" checked>
-                    <label class="form-check-label" for="enabled">Habilitar Job</label>
-                  </div>
-                </div>
+<div class="col-12">
+  <div class="border rounded p-2">
+    <strong>Programar respaldo</strong>
+    <div class="row mt-2 g-2">
+
+      <!-- Tipo de frecuencia -->
+      <div class="col-md-6">
+        <label class="form-label">Frecuencia</label>
+        <select class="form-select" name="freq" id="freq" onchange="toggleFrequencyFields()">
+          <option value="DAILY">Diario</option>
+          <option value="WEEKLY">Semanal</option>
+          <option value="MONTHLY">Mensual</option>
+          <option value="ONCE">Una sola vez</option>
+        </select>
+      </div>
+
+      <!-- Fecha y hora -->
+      <div class="col-md-6">
+        <label class="form-label">Fecha y hora de inicio</label>
+        <input class="form-control" type="datetime-local" name="start_time" required>
+      </div>
+
+      <!-- Días de la semana -->
+      <div class="col-12" id="daysOfWeek">
+        <label class="form-label mb-1">Días de la semana</label>
+        <div class="d-flex flex-wrap gap-2">
+          <?php 
+            $days = ['MON'=>'Lun','TUE'=>'Mar','WED'=>'Mié','THU'=>'Jue','FRI'=>'Vie','SAT'=>'Sáb','SUN'=>'Dom'];
+            foreach ($days as $code=>$label): ?>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" value="<?= $code ?>" id="d_<?= $code ?>" onchange="updateDaysField()">
+                <label class="form-check-label" for="d_<?= $code ?>"><?= $label ?></label>
               </div>
-            </div>
-          </div>
+          <?php endforeach; ?>
+        </div>
+        <input type="hidden" name="byday" id="byday" value="">
+      </div>
+
+      <!-- Hora y minuto -->
+      <div class="col-md-4">
+        <label class="form-label">Hora</label>
+        <input type="number" name="byhour" id="byhour" min="0" max="23" class="form-control" placeholder="Ej. 2 para 2:00 AM">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Minuto</label>
+        <input type="number" name="byminute" id="byminute" min="0" max="59" class="form-control" placeholder="Ej. 0 para en punto">
+      </div>
+      <div class="col-md-4 d-flex align-items-end">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="enabled" id="enabled" checked>
+          <label class="form-check-label" for="enabled">Habilitar job</label>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleFrequencyFields() {
+  const freq = document.getElementById('freq').value;
+  document.getElementById('daysOfWeek').style.display = (freq === 'WEEKLY') ? 'block' : 'none';
+}
+
+function updateDaysField() {
+  const selected = [];
+  document.querySelectorAll('#daysOfWeek input[type=checkbox]:checked')
+    .forEach(chk => selected.push(chk.value));
+  document.getElementById('byday').value = selected.join(',');
+}
+
+toggleFrequencyFields();
+</script>
+
 
         </div>
       </div>

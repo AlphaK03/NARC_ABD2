@@ -1,0 +1,12 @@
+<?php
+$conn = @oci_connect('CRAN_CLIENT2', 'Client#2025', 'localhost/CRANPDB', 'AL32UTF8');
+if (!$conn) {
+    $e = oci_error();
+    echo "<pre>";
+    print_r($e);
+    echo "</pre>";
+} else {
+    echo "✅ Conexión exitosa a Oracle.";
+    oci_close($conn);
+}
+?>

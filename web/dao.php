@@ -1,4 +1,8 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 // =========================
 // Conexión OCI8 + utilidades
 // =========================
@@ -6,21 +10,25 @@ function db() {
     static $conn;
     if ($conn) return $conn;
 
-    // Ajusta tus parámetros:
-    $host = '127.0.0.1';
-    $port = '1521';
-    $sid  = 'XE';
-    $user = 'APPUSER';
-    $pass = 'APP_PASS';
+    // Si no hay sesión iniciada, forzar login
+    if (empty($_SESSION['db_user']) || empty($_SESSION['db_pass']) || empty($_SESSION['db_conn'])) {
+        header("Location: ?login=1");
+        exit;
+    }
 
-    $tns = "(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=$host)(PORT=$port))(CONNECT_DATA=(SERVER=DEDICATED)(SID=$sid)))";
-    $conn = @oci_connect($user, $pass, $tns, 'AL32UTF8');
+    $user = $_SESSION['db_user'];
+    $pass = $_SESSION['db_pass'];
+    $connStr = $_SESSION['db_conn']; // Ej: localhost/XE
+
+    $conn = @oci_connect($user, $pass, $connStr, 'AL32UTF8');
     if (!$conn) {
         $e = oci_error();
-        die('Error de conexión Oracle: ' . htmlentities($e['message'], ENT_QUOTES));
+        session_destroy();
+        die('Error de conexión Oracle: ' . htmlentities($e['message']));
     }
     return $conn;
 }
+
 
 function redirect($url) { header("Location: $url"); exit; }
 
@@ -37,6 +45,12 @@ function refcursor_to_array($stmt) {
     $rows = [];
     while ($r = oci_fetch_assoc($stmt)) $rows[] = $r;
     return $rows;
+}
+function close_db() {
+    global $conn;
+    if ($conn && oci_close($conn)) {
+        $conn = null;
+    }
 }
 
 // ==========================
@@ -77,17 +91,11 @@ function callSetObjects(int $strategyId, string $objectsJson): void {
 
 function callUpsertSchedule(array $in): int {
     $conn = db();
-    $sql = "BEGIN bk_pkg.upsert_schedule(:p_sched_id,:p_sid,:p_freq,:p_start,:p_byday,:p_byhour,:p_byminute,:p_enabled); END;";
+    $ts = $in['start_time'];
+    $sql = "BEGIN bk_pkg.upsert_schedule(:p_sched_id,:p_sid,:p_freq,to_timestamp(:p_start_str,'YYYY-MM-DD\"T\"HH24:MI'),:p_byday,:p_byhour,:p_byminute,:p_enabled); END;";
     $st = oci_parse($conn, $sql);
 
     $schedId = $in['schedule_id'];
-    // Normaliza start_time: 'YYYY-MM-DDTHH:MM' → TIMESTAMP
-    $ts = $in['start_time']; // HTML datetime-local
-    // Formato: 2025-10-16T02:00 → to_timestamp(:ts, 'YYYY-MM-DD\"T\"HH24:MI')
-    $ts_sql = "to_timestamp(:p_start_str,'YYYY-MM-DD\"T\"HH24:MI')";
-    $sql = "BEGIN bk_pkg.upsert_schedule(:p_sched_id,:p_sid,:p_freq, $ts_sql, :p_byday,:p_byhour,:p_byminute,:p_enabled); END;";
-    $st = oci_parse($conn, $sql);
-
     oci_bind_by_name($st, ':p_sched_id', $schedId, 40);
     oci_bind_by_name($st, ':p_sid',      $in['strategy_id']);
     oci_bind_by_name($st, ':p_freq',     $in['freq']);
@@ -165,4 +173,14 @@ function fetchDiscovery(): array {
     oci_free_statement($rc2);
 
     return ['tablespaces' => $tablespaces, 'datafiles' => $datafiles];
+}
+function getNextStrategyName(): string {
+    $conn = db();
+    $user = strtoupper($_SESSION['db_user'] ?? 'USER');
+    $sql = "SELECT LPAD(NVL(MAX(strategy_id)+1,1),3,'0') AS nextnum FROM BK_STRATEGY";
+    $st = oci_parse($conn, $sql);
+    oci_execute($st);
+    $row = oci_fetch_assoc($st);
+    $num = $row['NEXTNUM'] ?? '001';
+    return "rman_{$user}_{$num}.rma";
 }
