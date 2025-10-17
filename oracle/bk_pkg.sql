@@ -76,7 +76,7 @@ CREATE OR REPLACE PACKAGE BODY bk_pkg AS
   -- Parámetros “de entorno” (ajusta rutas según tu instalación)
   c_directory_name CONSTANT VARCHAR2(30) := 'RMAN_DIR';  -- Oracle DIRECTORY
   c_job_prefix     CONSTANT VARCHAR2(20) := 'BK_STRAT_';
-  c_rman_bin       CONSTANT VARCHAR2(260):= 'rman';      -- en Linux suele estar en PATH del usuario Oracle
+  c_rman_bin       CONSTANT VARCHAR2(260):= 'C:\Oracle21c\bin\rman.exe';      -- en Linux suele estar en PATH del usuario Oracle
 
   /* Utilidad: obtiene la ruta física del DIRECTORY RMAN_DIR */
   FUNCTION get_directory_path RETURN VARCHAR2 IS
@@ -254,7 +254,7 @@ CREATE OR REPLACE PACKAGE BODY bk_pkg AS
 
     v_file := UTL_FILE.FOPEN(c_directory_name, v_filename, 'w');
 
-    UTL_FILE.PUT_LINE(v_file, 'CONNECT TARGET /');
+    --UTL_FILE.PUT_LINE(v_file, 'CONNECT TARGET /');
     UTL_FILE.PUT_LINE(v_file, 'RUN {');
 
     IF v_type = 'FULL' THEN
@@ -356,32 +356,59 @@ CREATE OR REPLACE PACKAGE BODY bk_pkg AS
     --    Advertencia: requiere configuración de external jobs en el SO.
     -- 4) Crear job de tipo EXECUTABLE que invoque RMAN con el command file
 --    Advertencia: requiere privilegio CREATE EXTERNAL JOB y servicio del Scheduler activo
-DBMS_SCHEDULER.CREATE_JOB (
-  job_name        => v_job_name,
-  job_type        => 'PLSQL_BLOCK', 
-  job_action      => 'BEGIN NULL; END;',  -- Simulación segura sin usar rman.exe
-  start_date      => v_start,
-  repeat_interval => v_repeat,
-  enabled         => TRUE,                -- Activa el job automáticamente
-  auto_drop       => FALSE,               -- No se borra tras ejecutarse
-  comments        => 'Simulación de backup para estrategia ' || p_strategy_id
+-- Crea el job del scheduler
+-- Crea el job del scheduler
+    -- Crear o reemplazar el job EXECUTABLE correctamente configurado
+   DBMS_SCHEDULER.CREATE_JOB (
+  job_name      => v_job_name,
+  job_type      => 'EXECUTABLE',
+  job_action    => 'C:\Oracle21c\scripts\run_rman.bat',  -- ruta real de tu .bat
+  start_date    => v_start,
+  enabled       => FALSE,
+  auto_drop     => FALSE,
+  comments      => 'Job de respaldo RMAN generado por BK_PKG'
+);
+
+-- Asignar credenciales y directorio (correcto)
+DBMS_SCHEDULER.SET_ATTRIBUTE(v_job_name, 'credential_name', 'WIN_ORACLE_TASK');
+DBMS_SCHEDULER.SET_ATTRIBUTE(v_job_name, 'repeat_interval', v_repeat);
+
+-- Pasar argumentos
+DBMS_SCHEDULER.SET_ATTRIBUTE(v_job_name, 'number_of_arguments', 1);
+DBMS_SCHEDULER.SET_JOB_ARGUMENT_VALUE(v_job_name, 1, TO_CHAR(p_strategy_id));
+
+-- Habilitar si aplica
+IF v_enabled = 'S' THEN
+  DBMS_SCHEDULER.ENABLE(v_job_name);
+END IF;
+
+
+-- Log interno
+INSERT INTO BK_LOG(strategy_id, started_at, finished_at, status, message)
+VALUES (
+  p_strategy_id,
+  SYSTIMESTAMP,
+  SYSTIMESTAMP,
+  'SUBMITTED',
+  'Job ' || v_job_name || ' creado o actualizado correctamente'
 );
 
 
 
-    -- args típicos: 'target', 'nocatalog', '@/ruta/strat_X.rman'
-    DBMS_SCHEDULER.SET_JOB_ARGUMENT_VALUE(v_job_name, 1, 'target /');
-    DBMS_SCHEDULER.SET_JOB_ARGUMENT_VALUE(v_job_name, 2, 'nocatalog');
-    DBMS_SCHEDULER.SET_JOB_ARGUMENT_VALUE(v_job_name, 3, '@'||v_dir_path||'/'||v_cmdfile);
 
-    IF v_enabled = 'S' THEN
-      DBMS_SCHEDULER.ENABLE(v_job_name);
-    END IF;
+-- Captura de logs de ejecución
 
-    -- Registro en BK_LOG (evento de definición/actualización)
-    INSERT INTO BK_LOG(strategy_id, started_at, finished_at, status, message)
-    VALUES (p_strategy_id, SYSTIMESTAMP, SYSTIMESTAMP, 'SUBMITTED',
-            'Job '||v_job_name||' creado/actualizado con '||v_repeat);
+
+-- Habilita si corresponde
+IF v_enabled = 'S' THEN
+  DBMS_SCHEDULER.ENABLE(v_job_name);
+END IF;
+
+
+INSERT INTO BK_LOG(strategy_id, started_at, finished_at, status, message)
+VALUES (p_strategy_id, SYSTIMESTAMP, SYSTIMESTAMP, 'SUBMITTED',
+        'Job '||v_job_name||' creado/actualizado con '||v_repeat);
+
   EXCEPTION
     WHEN NO_DATA_FOUND THEN
       RAISE_APPLICATION_ERROR(-20005,'No existe BK_SCHEDULE para la estrategia '||p_strategy_id);
