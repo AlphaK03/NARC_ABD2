@@ -76,7 +76,7 @@ CREATE OR REPLACE PACKAGE BODY bk_pkg AS
   -- Parámetros “de entorno” (ajusta rutas según tu instalación)
   c_directory_name CONSTANT VARCHAR2(30) := 'RMAN_DIR';  -- Oracle DIRECTORY
   c_job_prefix     CONSTANT VARCHAR2(20) := 'BK_STRAT_';
-  c_rman_bin       CONSTANT VARCHAR2(260):= 'C:\Oracle21c\bin\rman.exe';      -- en Linux suele estar en PATH del usuario Oracle
+  c_rman_bin       CONSTANT VARCHAR2(260):= 'C:\oracle19c\bin\rman.exe';      -- en Linux suele estar en PATH del usuario Oracle
 
   /* Utilidad: obtiene la ruta física del DIRECTORY RMAN_DIR */
   FUNCTION get_directory_path RETURN VARCHAR2 IS
@@ -362,7 +362,7 @@ CREATE OR REPLACE PACKAGE BODY bk_pkg AS
    DBMS_SCHEDULER.CREATE_JOB (
   job_name      => v_job_name,
   job_type      => 'EXECUTABLE',
-  job_action    => 'C:\Oracle21c\scripts\run_rman.bat',  -- ruta real de tu .bat
+  job_action    => 'C:\oracle19c\rman_app\run_rman.bat',  -- ruta real de tu .bat
   start_date    => v_start,
   enabled       => FALSE,
   auto_drop     => FALSE,
