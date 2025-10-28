@@ -1,3 +1,10 @@
+
+<?php if (!empty($archiveMsg)): ?>
+  <div class="archive-status <?= htmlspecialchars($archiveColor ?? '') ?> mb-3">
+    <?= htmlspecialchars($archiveMsg) ?>
+  </div>
+<?php endif; ?>
+
 <div class="row">
   <div class="col-12 col-lg-6">
     <div class="card mb-4">

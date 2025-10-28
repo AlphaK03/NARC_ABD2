@@ -29,6 +29,16 @@ function db() {
     return $conn;
 }
 
+function getArchiveMode() {
+    $conn = db(); // usa tu función existente de conexión
+    $sql = "SELECT LOG_MODE FROM V\$DATABASE";
+    $stid = oci_parse($conn, $sql);
+    oci_execute($stid);
+    $row = oci_fetch_assoc($stid);
+    oci_free_statement($stid);
+    return $row ? $row['LOG_MODE'] : 'DESCONOCIDO'; // ARCHIVELOG o NOARCHIVELOG
+}
+
 
 function redirect($url) { header("Location: $url"); exit; }
 
@@ -37,9 +47,9 @@ function get_flash() { $_SESSION ?? session_start(); $f = $_SESSION['flash'] ?? 
 
 function render($view, $params = []) {
     extract($params);
-    include __DIR__ . "/views/layout.php";
-    include __DIR__ . "/views/$view.php";
+    include __DIR__ . "/views/$view.php"; // solo la vista
 }
+
 
 function refcursor_to_array($stmt) {
     $rows = [];

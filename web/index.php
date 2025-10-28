@@ -1,7 +1,6 @@
 <?php
 session_start();
 require __DIR__ . '/dao.php';
-require __DIR__ . '/views/layout.php';
 
 // ==== LOGIN SIMPLE ====
 if (isset($_GET['login'])) {
@@ -107,15 +106,43 @@ if ($action === 'run' && isset($_GET['id'])) {
 if ($action === 'logs' && isset($_GET['id'])) {
     $strategyId = (int)$_GET['id'];
     $logs = fetchLogs($strategyId);
-    render('logs', ['logs' => $logs, 'strategyId' => $strategyId]);
+
+    // Modo ARCHIVELOG y mensajes (para layout)
+    $archiveMode = getArchiveMode();
+    $color = ($archiveMode === 'ARCHIVELOG') ? 'success' : 'warning';
+    $message = ($archiveMode === 'ARCHIVELOG')
+        ? "La base de datos está en modo ARCHIVELOG ✅"
+        : "La base de datos NO está en modo ARCHIVELOG ⚠️";
+
+    require __DIR__ . '/views/layout.php';
+    render('logs', [
+        'logs' => $logs,
+        'strategyId' => $strategyId,
+        'flash' => get_flash(),
+        'archiveMode' => $archiveMode,
+        'archiveColor' => $color,
+        'archiveMsg' => $message
+    ]);
     exit;
 }
 
-// DEFAULT: listar + formulario
+// Verificar modo ARCHIVELOG
+$archiveMode = getArchiveMode();
+$color = ($archiveMode === 'ARCHIVELOG') ? 'success' : 'warning';
+$message = ($archiveMode === 'ARCHIVELOG')
+    ? "La base de datos está en modo ARCHIVELOG ✅"
+    : "La base de datos NO está en modo ARCHIVELOG ⚠️";
+
 $strategies = fetchStrategies();
 $discovery  = fetchDiscovery(); // ['tablespaces'=>[], 'datafiles'=>[]]
+$flash = get_flash(); // 🟢 Traer el flash ANTES del layout
+
+require __DIR__ . '/views/layout.php';
 render('strategies', [
-    'strategies' => $strategies,
-    'discovery'  => $discovery,
-    'flash'      => get_flash(),
+    'strategies'   => $strategies,
+    'discovery'    => $discovery,
+    'flash'        => $flash,
+    'archiveMode'  => $archiveMode,
+    'archiveColor' => $color,
+    'archiveMsg'   => $message
 ]);

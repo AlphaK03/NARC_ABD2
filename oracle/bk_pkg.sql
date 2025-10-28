@@ -426,15 +426,42 @@ VALUES (p_strategy_id, SYSTIMESTAMP, SYSTIMESTAMP, 'SUBMITTED',
     DBMS_SCHEDULER.DISABLE(v_job_name, force => TRUE);
   END;
 
-  PROCEDURE run_now(p_strategy_id IN NUMBER) IS
-    v_job_name VARCHAR2(128) := c_job_prefix || p_strategy_id;
-  BEGIN
-    INSERT INTO BK_LOG(strategy_id, started_at, status, message)
-    VALUES (p_strategy_id, SYSTIMESTAMP, 'SUBMITTED', 'Ejecución manual solicitada');
-    DBMS_SCHEDULER.RUN_JOB(v_job_name, use_current_session => FALSE);
-    INSERT INTO BK_LOG(strategy_id, finished_at, status, message)
-    VALUES (p_strategy_id, SYSTIMESTAMP, 'SUBMITTED', 'RUN_JOB enviado al scheduler');
-  END;
+ PROCEDURE run_now(p_strategy_id IN NUMBER) IS
+  v_job_name  VARCHAR2(128) := c_job_prefix || p_strategy_id;
+  v_log_path  VARCHAR2(4000);
+  v_timestamp VARCHAR2(32);
+BEGIN
+  -- Timestamp legible para nombrar el log
+  v_timestamp := TO_CHAR(SYSTIMESTAMP, 'YYYY-MM-DD_HH24-MI-SS');
+
+  -- Ruta esperada del log según convención del .bat
+  v_log_path := 'C:\oracle19c\rman_app\logs\strat_' || p_strategy_id ||
+                '\rman_' || v_timestamp || '.txt';
+
+  -- Registrar inicio manual y ruta del log
+  INSERT INTO BK_LOG(strategy_id, started_at, status, message)
+  VALUES (
+    p_strategy_id,
+    SYSTIMESTAMP,
+    'SUBMITTED',
+    'Ejecución manual solicitada. Archivo log: ' || v_log_path
+  );
+
+  -- Ejecutar el job de scheduler en background
+  DBMS_SCHEDULER.RUN_JOB(v_job_name, use_current_session => FALSE);
+
+  -- Registrar envío al scheduler
+  INSERT INTO BK_LOG(strategy_id, finished_at, status, message)
+  VALUES (
+    p_strategy_id,
+    SYSTIMESTAMP,
+    'SUBMITTED',
+    'RUN_JOB enviado al scheduler. Log esperado en: ' || v_log_path
+  );
+
+  COMMIT;
+END;
+
 
   /* =======
      Logs API

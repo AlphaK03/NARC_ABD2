@@ -3,25 +3,48 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Backup App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Bootstrap CDN (sin archivos locales extra) -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    .badge-pill { border-radius: 10rem; }
-    .table-sticky th { position: sticky; top: 0; background: #f8f9fa; z-index: 1; }
-    .small-note { font-size: 0.9rem; color:#6c757d; }
-  </style>
-</head>
-<body class="bg-light">
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3">
-  <div class="container">
-    <a class="navbar-brand" href="?action=list">Backup Monitor</a>
-  </div>
-</nav>
-<div class="container mb-5">
-  <?php if (!empty($flash)): [$type,$msg] = $flash; ?>
-    <div class="alert alert-<?= $type==='ok'?'success':'danger' ?>"><?= htmlspecialchars($msg) ?></div>
-  <?php endif; ?>
 
-<?php endif; // 🔹 Cierre del if de apertura (necesario para evitar el Parse error) ?>
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Estilos separados -->
+  <link rel="stylesheet" href="assets/dark-theme.css">
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg mb-2">
+    <div class="container-fluid">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="?action=list">
+        <img src="assets/img/cran_logo.png" alt="CRAN Logo" 
+             style="height:150px; width:auto; border-radius:4px;">
+        CRAN BACKUP
+      </a>
+    </div>
+  </nav>
+
+  <main class="main-container">
+
+    <!-- Flash -->
+   <?php if (!empty($flash)): [$type,$msg] = $flash; ?>
+  <div class="alert alert-<?= ($type === 'ok') ? 'success' : 'warning' ?> shadow-sm mb-3 fade show" id="autoAlert">
+    <?= htmlspecialchars($msg) ?>
+  </div>
+  <script>
+    setTimeout(() => {
+      const a = document.getElementById('autoAlert');
+      if (a) a.classList.add('fade');
+      setTimeout(() => a?.remove(), 1500);
+    }, 2000);
+  </script>
+<?php endif; ?>
+
+
+    <!-- ARCHIVELOG / NOARCHIVELOG -->
+    <?php if (!empty($archiveMsg)): ?>
+      <div class="archive-status <?= htmlspecialchars($archiveColor ?? '') ?> mb-3">
+        <?= htmlspecialchars($archiveMsg) ?>
+      </div>
+    <?php endif; ?>
+
+<?php endif; ?>
